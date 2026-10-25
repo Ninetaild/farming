@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>그라사마 이벤트 파밍 계산기</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}input,select,textarea{color-scheme:dark} .num{font-variant-numeric:tabular-nums}</style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+<header class="sticky top-0 z-10 border-b border-slate-800 bg-slate-900/95"><div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 p-4"><div><h1 class="text-xl font-bold text-amber-300">그라사마 이벤트 파밍 계산기</h1><p class="text-xs text-slate-400">Grand Summoners · Event Farming Simulator</p></div><div class="flex flex-wrap gap-2"><button id="reset" class="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800">기본값 복원</button><button id="export" class="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800">JSON 내보내기</button><label class="cursor-pointer rounded-lg bg-indigo-600 px-3 py-2 text-sm hover:bg-indigo-500">JSON 불러오기<input id="import" type="file" accept=".json,application/json" class="hidden"></label></div></div></header>
+<main class="mx-auto grid max-w-6xl gap-5 p-4 lg:grid-cols-2">
+<section class="space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+<h2 class="text-lg font-semibold">파밍 조건 설정</h2>
+<label class="block text-sm text-slate-300">던전<select id="dungeon" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2"></select></label>
+<div class="grid grid-cols-2 gap-3"><label class="text-sm text-slate-300">플레이 모드<select id="mode" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2"><option value="solo">솔로 플레이</option><option value="party" selected>멀티/파티 플레이</option></select></label><label class="text-sm text-slate-300">리더 럭<select id="luck" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2"><option value="0">Luck 0 · 0개</option><option value="100">Luck 100 · 2개</option><option value="120" selected>Luck 120 · 3개</option><option value="140">Luck 140 · 4개</option><option value="160">Luck 160 · 5개</option><option value="180">Luck 180 · 6개</option><option value="200">Luck 200 · 7개</option><option value="250">Luck 250 · 8개</option><option value="300">Luck 300 · 9개</option></select></label></div>
+<div class="grid grid-cols-2 gap-3"><label class="text-sm text-slate-300">파티원 수<select id="members" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2"><option value="0">0명 (+0개)</option><option value="1">1명 (+2개)</option><option value="2">2명 (+4개)</option><option value="3" selected>3명 (+6개)</option></select></label><label class="text-sm text-slate-300">반복 클리어 횟수<input id="runs" type="number" min="1" max="100000" value="100" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2"></label></div>
+<div class="grid grid-cols-3 gap-3"><label class="text-xs text-slate-400">재화 보너스 (%)<input id="bonus" type="number" min="0" value="100" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-sm"></label><label class="text-xs text-slate-400">기본 재화량<input id="coin" type="number" min="0" value="300" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-sm"></label><label class="text-xs text-slate-400">음식 수량<input id="food" type="number" min="0" value="1" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-sm"></label></div>
+<p id="status" class="text-sm text-emerald-300" aria-live="polite">데이터를 불러오는 중…</p>
+</section>
+<section class="space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-5"><h2 class="text-lg font-semibold">예상 획득량</h2><p class="text-sm text-slate-400">입력 조건과 선택 던전의 확률을 바탕으로 한 기댓값입니다. 실제 결과와 다를 수 있습니다.</p><div class="grid grid-cols-2 gap-3"><div class="rounded-xl bg-slate-950 p-4"><p class="text-sm text-slate-400">총 드랍 시도</p><p id="totalDrops" class="num mt-1 text-2xl font-bold text-amber-300">—</p></div><div class="rounded-xl bg-slate-950 p-4"><p class="text-sm text-slate-400">예상 재화</p><p id="coins" class="num mt-1 text-2xl font-bold text-amber-300">—</p></div></div><div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead class="text-slate-400"><tr><th class="py-2">등급</th><th>기본 드랍</th><th>럭 드랍</th></tr></thead><tbody id="gradeRows"></tbody></table></div></section>
+<section class="space-y-3 rounded-2xl border border-slate-800 bg-slate-900 p-5 lg:col-span-2"><div><h2 class="text-lg font-semibold">확률 데이터 편집</h2><p class="mt-1 text-sm text-slate-400">현재 던전 설정을 JSON으로 편집한 뒤 저장하세요. 저장한 데이터는 이 브라우저에 보관됩니다.</p></div><textarea id="editor" spellcheck="false" class="min-h-64 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-xs leading-5"></textarea><div class="flex flex-wrap gap-2"><button id="save" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold hover:bg-emerald-500">편집 내용 저장</button><button id="revert" class="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">현재 던전 편집 취소</button></div></section>
+</main>
+<footer class="mx-auto max-w-6xl px-4 pb-6 text-xs text-slate-500">기본 확률 데이터는 data/dungeons.json에서 관리합니다.</footer>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let defaults = {}, data = {};
+  const clone = value => JSON.parse(JSON.stringify(value));
+  const valid = obj => obj && typeof obj === 'object' && !Array.isArray(obj) && Object.keys(obj).length > 0 && Object.values(obj).every(d => d && d['기본 드랍'] && d['럭 드랍'] && ['기본 드랍','럭 드랍'].every(k => d[k].grades && d[k].subProbs && ['bronze','silver','gold'].every(g => Number.isFinite(d[k].grades[g]) && Array.isArray(d[k].subProbs[g]))));
+  const pct = n => (100 * n).toFixed(2) + '%';
+  const num = n => Math.round(n).toLocaleString('ko-KR');
+  async function init() {
+    try {
+      const res = await fetch('./data/dungeons.json', {cache:'no-store'});
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      defaults = await res.json();
+      if (!valid(defaults)) throw new Error('JSON 데이터 구조가 올바르지 않습니다.');
+      try { const saved = JSON.parse(localStorage.getItem('gs_farming_data') || 'null'); data = valid(saved) ? saved : clone(defaults); }
+      catch { data = clone(defaults); }
+      renderOptions(); update();
+      $('status').textContent = '데이터 로드 완료 · 던전 ' + Object.keys(data).length + '개';
+    } catch (e) {
+      $('status').textContent = '데이터 로드 실패: ' + e.message + ' (GitHub Pages 또는 로컬 서버에서 실행하세요.)';
+      $('status').className = 'text-sm text-rose-300';
+    }
+  }
+  function renderOptions() {
+    const old = $('dungeon').value;
+    $('dungeon').replaceChildren(...Object.keys(data).map(name => new Option(name, name)));
+    if (data[old]) $('dungeon').value = old;
+  }
+  function getConfig(type) { return data[$('dungeon').value][type]; }
+  function update() {
+    if (!data[$('dungeon').value]) return;
+    $('editor').value = JSON.stringify(data[$('dungeon').value], null, 2);
+    const runs = Math.max(1, Math.min(100000, Number($('runs').value) || 1));
+    const luck = Number($('luck').value);
+    const luckDrops = ({0:0,100:2,120:3,140:4,160:5,180:6,200:7,250:8,300:9})[luck] || 0;
+    const partyDrops = $('mode').value === 'party' ? 2 * Number($('members').value) : 0;
+    const total = runs * (1 + luckDrops + partyDrops);
+    $('totalDrops').textContent = num(total);
+    const base = getConfig('기본 드랍'), lucky = getConfig('럭 드랍');
+    $('coins').textContent = num(runs * Number($('coin').value || 0) * (1 + Number($('bonus').value || 0) / 100) * ((base.grades.bronze * base.subProbs.bronze[1]) + (base.grades.silver * base.subProbs.silver[0])));
+    $('gradeRows').innerHTML = ['bronze','silver','gold'].map((g,i) => {
+      const label = ['동','은','금'][i];
+      return '<tr class="border-t border-slate-800"><td class="py-3 font-semibold">'+label+'</td><td>'+pct(base.grades[g])+'</td><td>'+pct(lucky.grades[g])+'</td></tr>';
+    }).join('');
+  }
+  $('dungeon').addEventListener('change', update);
+  ['mode','luck','members','runs','bonus','coin','food'].forEach(id => $(id).addEventListener('input', update));
+  $('save').addEventListener('click', () => {
+    try {
+      const parsed = JSON.parse($('editor').value);
+      if (!parsed['기본 드랍'] || !parsed['럭 드랍'] || !valid({[ $('dungeon').value ]: parsed})) throw new Error('기본 드랍/럭 드랍 또는 grades/subProbs 구조를 확인하세요.');
+      data[$('dungeon').value] = parsed;
+      localStorage.setItem('gs_farming_data', JSON.stringify(data));
+      update(); $('status').textContent = '현재 던전 설정을 저장했습니다.';
+    } catch (e) { alert('저장 실패: ' + e.message); }
+  });
+  $('revert').addEventListener('click', update);
+  $('reset').addEventListener('click', () => { data = clone(defaults); localStorage.removeItem('gs_farming_data'); renderOptions(); update(); $('status').textContent = '기본 JSON 데이터로 복원했습니다.'; });
+  $('export').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = 'gs_farming_config.json'; a.click(); URL.revokeObjectURL(url);
+  });
+  $('import').addEventListener('change', async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!valid(parsed)) throw new Error('던전명 아래에 기본 드랍/럭 드랍과 유효한 확률 데이터가 필요합니다.');
+      data = parsed; localStorage.setItem('gs_farming_data', JSON.stringify(data)); renderOptions(); update();
+      $('status').textContent = 'JSON 설정을 불러왔습니다.';
+    } catch (err) { alert('JSON 불러오기 실패: ' + err.message); }
+    finally { e.target.value = ''; }
+  });
+  init();
+})();
+</script>
+</body></html>
