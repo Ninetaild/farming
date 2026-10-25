@@ -32,7 +32,8 @@
     <label class="block text-sm text-slate-300">추가 100 럭 파티원 수<select id="members" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2"><option value="0">0명 (+0개)</option><option value="1">1명 (+2개)</option><option value="2">2명 (+4개)</option><option value="3" selected>3명 (+6개)</option></select></label>
     <label class="block text-sm text-slate-300">반복 클리어 횟수<input id="runs" type="number" min="1" max="1000000" value="100" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2"></label>
     <div class="rounded-xl bg-slate-950 p-4">
-      <div class="flex items-center justify-between gap-3"><span class="text-sm text-slate-400">기본 드랍 시도</span><strong id="baseAttempts" class="num text-lg">—</strong></div>
+      <div class="flex items-center justify-between gap-3"><span class="text-sm text-slate-400">클리어당 기본 드랍 상자 수</span><strong id="baseBoxes" class="num text-lg">—</strong></div>
+      <div class="mt-2 flex items-center justify-between gap-3"><span class="text-sm text-slate-400">기본 드랍 상자 총합</span><strong id="baseAttempts" class="num text-lg">—</strong></div>
       <div class="mt-2 flex items-center justify-between gap-3"><span class="text-sm text-slate-400">럭 드랍 시도</span><strong id="luckAttempts" class="num text-lg">—</strong></div>
       <div class="mt-2 flex items-center justify-between gap-3 border-t border-slate-800 pt-2"><span class="text-sm text-slate-400">총 드랍 시도</span><strong id="totalDrops" class="num text-xl text-amber-300">—</strong></div>
     </div>
@@ -83,7 +84,7 @@
     return Math.abs(sum(grades.map(g => g['확률'])) - 1) < 0.02;
   }
   function validDungeon(dungeon) {
-    return dungeon && validDrop(dungeon['기본 드랍']) && validDrop(dungeon['럭 드랍']);
+    return dungeon && Number.isInteger(dungeon['기본 드랍 상자 수']) && dungeon['기본 드랍 상자 수'] >= 1 && validDrop(dungeon['기본 드랍']) && validDrop(dungeon['럭 드랍']);
   }
   function validDataset(dataset) {
     return dataset && typeof dataset === 'object' && !Array.isArray(dataset) &&
@@ -139,8 +140,10 @@
     $('runs').value = runs;
     const leaderExtra = luckBonus[Number($('luck').value)] || 0;
     const partyExtra = $('mode').value === 'party' ? 2 * Number($('members').value) : 0;
-    const baseAttempts = runs;
+    const baseBoxes = dungeon['기본 드랍 상자 수'];
+    const baseAttempts = runs * baseBoxes;
     const luckAttempts = runs * (leaderExtra + partyExtra);
+    $('baseBoxes').textContent = fmt(baseBoxes);
     $('baseAttempts').textContent = fmt(baseAttempts);
     $('luckAttempts').textContent = fmt(luckAttempts);
     $('totalDrops').textContent = fmt(baseAttempts + luckAttempts);
